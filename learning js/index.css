@@ -1,0 +1,30 @@
+body{
+    background-color: rgb(47, 47, 47);
+    color: bisque;
+}
+#div1{
+    display: flex;
+    text-align: center;
+    vertical-align: auto;
+    justify-content: center;
+    border: 3px solid white;
+   
+}
+#mybutton{
+    margin-left: 680px;
+    margin-top: 180px;
+   
+    background-color: gainsboro;
+    border-radius: 10px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#mybutton:hover{
+    background-color: grey;
+    transform: scale(1.15);
+}
+h1{
+    display: inline;
+    background-color: rgb(27, 27, 27);
+    padding: 10px;
+    border-radius: 10px;
+}

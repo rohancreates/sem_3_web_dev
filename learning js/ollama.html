@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Calculator</title>
+
+    <!-- CSS Styling Block (Better than pure inline for layout, but keeping the style minimal) -->
+    <style>
+        /* Body Styling for overall minimal look and centering */
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensures calculator is vertically centered */
+            margin: 0;
+            background-color: #f4f4f9; /* Very light background */
+        }
+
+        /* Main Calculator Container */
+        .calculator {
+            width: 300px; /* Fixed width for controlled size */
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            padding: 20px;
+        }
+
+        /* Display Screen */
+        #display {
+            width: 100%;
+            height: 60px;
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 2.5em; /* Large, clear font size */
+            text-align: right;
+            border: none;
+            background-color: #e9e9e9; /* Light gray background for screen */
+            border-radius: 8px;
+            box-sizing: border-box; /* Ensures padding doesn't increase width */
+            cursor: pointer;
+            /* Using inline style for focus effect */
+            /* Note: Adding focus style here to demonstrate mixing methods */
+            transition: background-color 0.1s; 
+        }
+        
+        /* Button Grid Layout */
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 equal columns */
+            gap: 10px; /* Space between buttons */
+        }
+
+        /* Styling for all buttons */
+        .btn {
+            padding: 20px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.15s, transform 0.1s;
+            /* Adding a pseudo-inline style hover effect */
+            transition-property: background-color, transform; 
+        }
+
+        /* Interaction effects (Hover) */
+        .btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        /* Special styling for the operator buttons (e.g., +, -, =) */
+        .operator {
+            background-color: #ffa07a; /* Light salmon/orange */
+            color: white;
+        }
+        
+        /* Special styling for the clear button */
+        .clear {
+            background-color: #ff6b6b; /* Reddish for clear */
+            color: white;
+        }
+
+        /* Active/Clicked state effect */
+        .btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="calculator">
+        <!-- Display Screen -->
+        <input type="text" id="display" readonly value="0">
+
+        <!-- Button Grid -->
+        <div class="buttons">
+            <!-- Row 1 -->
+            <button class="btn clear" onclick="clearDisplay()">AC</button>
+            <button class="btn operator" onclick="appendToDisplay('/')">/</button>
+            <button class="btn operator" onclick="appendToDisplay('*')">×</button>
+            <button class="btn operator" onclick="appendToDisplay('-')">-</button>
+            
+            <!-- Row 2 -->
+            <button class="btn" onclick="appendToDisplay('7')">7</button>
+            <button class="btn" onclick="appendToDisplay('8')">8</button>
+            <button class="btn" onclick="appendToDisplay('9')">9</button>
+            <button class="btn operator" onclick="appendToDisplay('+')">+</button>
+
+            <!-- Row 3 -->
+            <button class="btn" onclick="appendToDisplay('4')">4</button>
+            <button class="btn" onclick="appendToDisplay('5')">5</button>
+            <button class="btn" onclick="appendToDisplay('6')">6</button>
+            
+            <!-- Row 4 (Using span to span the row visually if needed, but keeping it standard for now) -->
+            <button class="btn" onclick="appendToDisplay('1')">1</button>
+            <button class="btn" onclick="appendToDisplay('2')">2</button>
+            <button class="btn" onclick="appendToDisplay('3')">3</button>
+            
+            <!-- Row 5 -->
+            <button class="btn" style="grid-column: span 1;" onclick="appendToDisplay('0')">0</button>
+            <button class="btn" onclick="

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comeback</title>
+    
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div id="div1"><h1>Learning Js</h1></div>
+    <div ><button id="mybutton" onclick="changebgcolor()">
+        change bg color</button></div>
+    <script>
+        console.log(`live change bla bla ha ha ha`);
+       function changebgcolor(){
+        const color =["red", "blue", "green","yellow","purple","orange"];
+        const randomColor = color[Math.floor(Math.random() * color.length)];
+        document.body.style.backgroundColor = randomColor;
+        console.log(randomColor);
+        }
+    </script>
+</body>
+</html> 
