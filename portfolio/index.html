@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rohan — Computer Science Student & Builder</title>
+<meta name="description" content="Rohan is a Computer Science Engineering student at ABES Engineering College, building web experiences, computer vision systems and DSA foundations while learning full-stack development.">
+<meta name="theme-color" content="#0d0d0c">
+
+<meta property="og:title" content="Rohan — Computer Science Student & Builder">
+<meta property="og:description" content="CSE student building interactive web experiences and computer vision systems, learning full-stack development one project at a time.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="./style.css">
+</head>
+<body data-theme="dark">
+
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ============ NAV ============ -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="#top" class="brand">Rohan</a>
+
+    <nav class="primary-nav" id="primaryNav" aria-label="Primary">
+      <a href="#about">About</a>
+      <a href="#work">Work</a>
+      <a href="#stack">Stack</a>
+      <a href="#now">Now</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="cmdk-trigger" id="cmdkTrigger" type="button" aria-haspopup="dialog" aria-controls="cmdk">
+        <span>Search</span>
+        <kbd>⌘K</kbd>
+      </button>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark and light theme" aria-pressed="false">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.3M19.2 12h2.3M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primaryNav">
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top">
+    <div class="hero-inner">
+      <p class="hero-meta reveal">B.Tech CSE — ABES Engineering College, Ghaziabad</p>
+
+      <h1 class="hero-title reveal">
+        Rohan builds things<br>
+        to understand <em>how they work.</em>
+      </h1>
+
+      <p class="hero-sub reveal">
+        From interactive web experiences to systems that turn ideas into
+        something usable — currently a 2nd-year CSE student sharpening
+        that instinct one project at a time.
+      </p>
+
+      <div class="hero-role reveal">
+        <span class="hero-role-label">Right now I'm working as a</span>
+        <span class="hero-role-cycle" id="roleCycle" aria-live="polite">Web Developer</span>
+      </div>
+
+      <div class="hero-actions reveal">
+        <a href="#work" class="btn btn-primary magnetic">See the work</a>
+        <a href="#contact" class="btn btn-ghost magnetic">Get in touch</a>
+      </div>
+    </div>
+
+    <div class="hero-status reveal" aria-label="Build status">
+      <div class="status-line"><span class="status-dot" aria-hidden="true"></span> Available for projects &amp; collaborations</div>
+      <div class="status-grid">
+        <div><span class="status-key">Local time</span><span class="status-val" id="localTime">—</span></div>
+        <div><span class="status-key">Location</span><span class="status-val">Ghaziabad, IN</span></div>
+        <div><span class="status-key">Mode</span><span class="status-val">Building / Learning / Shipping</span></div>
+        <div><span class="status-key">Build</span><span class="status-val">2026.09</span></div>
+      </div>
+    </div>
+
+    <button class="scroll-cue" id="scrollCue" aria-label="Scroll to about section">
+      <span></span>
+    </button>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section class="about" id="about">
+    <div class="section-head">
+      <h2>A little about the builder</h2>
+      <p class="section-lede">
+        I'm a Computer Science student who learns best by building —
+        not by reading about building.
+      </p>
+    </div>
+
+    <div class="about-grid">
+      <div class="about-card about-card--wide">
+        <p>
+          I've spent the last year working through C++ and DSA fundamentals
+          alongside HTML, CSS and JavaScript, and I'm currently expanding
+          into full-stack development, Python, operating systems, OOP and
+          databases. I like taking an idea that only exists in my head and
+          turning it into something you can actually click on.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-card-label">Foundation</span>
+        <p>C++ &amp; Data Structures / Algorithms</p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-card-label">In progress</span>
+        <p>Full-stack web development, Python</p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-card-label">Beyond code</span>
+        <p>Sketching, video editing, gaming, visual experiments</p>
+      </div>
+
+      <div class="about-card about-card--quote">
+        <p>Student → Learner → Builder → Problem Solver → Future Developer.</p>
+        <span class="about-card-label">the trajectory</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WORK / PROJECTS ============ -->
+  <section class="work" id="work">
+    <div class="section-head">
+      <h2>Featured work</h2>
+      <p class="section-lede">A few things I've actually built, and a couple of ideas still taking shape.</p>
+    </div>
+
+    <div class="project-list" id="projectList">
+
+      <article class="project project--featured" data-project="gesture" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open details for Hand Gesture Cursor Control System">
+        <div class="project-media" aria-hidden="true">
+          <div class="gesture-demo">
+            <div class="gesture-hand">
+              <svg viewBox="0 0 120 120" fill="none">
+                <circle cx="60" cy="60" r="6" class="g-dot g-dot-1"/>
+                <circle cx="60" cy="60" r="4" class="g-dot g-dot-2"/>
+                <path class="g-trail" d="M20 90 C 40 60, 50 40, 60 60" />
+              </svg>
+            </div>
+            <div class="gesture-cursor" id="gestureCursor"></div>
+          </div>
+        </div>
+        <div class="project-body">
+          <div class="project-top">
+            <span class="project-status">Prototype</span>
+            <span class="project-arrow" aria-hidden="true">→</span>
+          </div>
+          <h3>Hand Gesture Cursor Control</h3>
+          <p>A computer-vision system that maps hand movement to real-time cursor control — no mouse required.</p>
+          <ul class="project-tags">
+            <li>Computer Vision</li>
+            <li>Hand Tracking</li>
+            <li>[ADD TECH STACK]</li>
+          </ul>
+          <div class="project-links">
+            <a href="https://github.com/rohancreates" target="_blank" rel="noopener" class="project-link" onclick="event.stopPropagation()">GitHub</a>
+            <span class="project-link project-link--disabled">Live demo — [ADD DEMO URL]</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="project-row">
+        <article class="project" data-project="sarthi" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open details for Sarthi">
+          <div class="project-body">
+            <div class="project-top">
+              <span class="project-status">Hackathon Concept</span>
+              <span class="project-arrow" aria-hidden="true">→</span>
+            </div>
+            <h3>Sarthi</h3>
+            <p>An AI-assisted tourism &amp; safety assistant concept, explored during a hackathon.</p>
+            <ul class="project-tags">
+              <li>AI / Assistant</li>
+              <li>Concept</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="project" data-project="blood" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open details for Emergency Blood-Donor App">
+          <div class="project-body">
+            <div class="project-top">
+              <span class="project-status">Hackathon Concept</span>
+              <span class="project-arrow" aria-hidden="true">→</span>
+            </div>
+            <h3>Emergency Blood-Donor App</h3>
+            <p>A campus-focused concept for connecting emergency blood requests with nearby donors.</p>
+            <ul class="project-tags">
+              <li>Full-stack</li>
+              <li>Concept</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="project project--empty">
+          <div class="project-body">
+            <span class="project-status">Open slot</span>
+            <h3>[ADD PROJECT]</h3>
+            <p>More projects land here as they ship — DSA implementations, hackathon builds, experiments.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STACK ============ -->
+  <section class="stack" id="stack">
+    <div class="section-head">
+      <h2>Tech stack</h2>
+      <p class="section-lede">What I actually reach for, and what I'm actively picking up.</p>
+    </div>
+
+    <div class="stack-groups">
+      <div class="stack-group">
+        <h3>Languages</h3>
+        <ul class="stack-list">
+          <li><span>C++</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>JavaScript</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>HTML</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>CSS</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>Python</span><em class="tag-learning">Learning</em></li>
+        </ul>
+      </div>
+
+      <div class="stack-group">
+        <h3>Computer science</h3>
+        <ul class="stack-list">
+          <li><span>Data Structures &amp; Algorithms</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>Problem Solving</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>OOP</span><em class="tag-learning">Learning</em></li>
+          <li><span>Operating Systems</span><em class="tag-learning">Learning</em></li>
+          <li><span>Discrete Structures</span><em class="tag-learning">Learning</em></li>
+        </ul>
+      </div>
+
+      <div class="stack-group">
+        <h3>Web</h3>
+        <ul class="stack-list">
+          <li><span>HTML / CSS</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>JavaScript / DOM</span><em class="tag-comfortable">Comfortable</em></li>
+          <li><span>Node.js</span><em class="tag-learning">Learning</em></li>
+          <li><span>Express</span><em class="tag-learning">Learning</em></li>
+          <li><span>React</span><em class="tag-learning">Learning</em></li>
+          <li><span>MongoDB</span><em class="tag-learning">Learning</em></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="dsa-panel">
+      <div class="dsa-copy">
+        <span class="section-label">Problem solving</span>
+        <h3>Building the habit of turning logic into code.</h3>
+        <p><span id="dsaCount">[DSA PROBLEMS SOLVED]</span> problems in, and counting — mostly arrays, strings and trees for now.</p>
+        <a href="https://leetcode.com/u/rohancreates/" target="_blank" rel="noopener" class="dsa-leetcode-link">View progress on LeetCode →</a>
+      </div>
+      <div class="dsa-visualizer" id="dsaVisualizer" aria-hidden="true">
+        <button class="dsa-tab is-active" data-structure="array">Array</button>
+        <button class="dsa-tab" data-structure="stack">Stack</button>
+        <button class="dsa-tab" data-structure="linkedlist">Linked List</button>
+        <div class="dsa-stage" id="dsaStage"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NOW ============ -->
+  <section class="now" id="now">
+    <div class="section-head">
+      <h2>Currently building</h2>
+      <p class="section-lede">What's on the bench this semester.</p>
+    </div>
+
+    <ul class="now-list">
+      <li><span class="now-dot"></span>Modern JavaScript &amp; the DOM, past the basics</li>
+      <li><span class="now-dot"></span>Node.js, Express and MongoDB — first full-stack app</li>
+      <li><span class="now-dot"></span>Python for data work, in Jupyter</li>
+      <li><span class="now-dot"></span>Advanced DSA — graphs and dynamic programming next</li>
+    </ul>
+  </section>
+
+  <!-- ============ EDUCATION ============ -->
+  <section class="education" id="education">
+    <div class="section-head">
+      <h2>Education</h2>
+    </div>
+    <div class="edu-row">
+      <div class="edu-year">2025 — 2029</div>
+      <div class="edu-detail">
+        <h3>ABES Engineering College</h3>
+        <p>B.Tech, Computer Science Engineering — Ghaziabad, India</p>
+        <span class="edu-meta">SGPA 8.2 · First year</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BEYOND CODE ============ -->
+  <section class="beyond" id="beyond">
+    <div class="section-head">
+      <h2>Beyond code</h2>
+      <p class="section-lede">The other half of how I think.</p>
+    </div>
+    <div class="beyond-strip">
+      <div class="beyond-card"><span>Sketching</span></div>
+      <div class="beyond-card"><span>Video Editing</span></div>
+      <div class="beyond-card"><span>Gaming</span></div>
+      <div class="beyond-card"><span>Visual Experiments</span></div>
+      <div class="beyond-card"><span>Content</span></div>
+    </div>
+  </section>
+
+  <!-- ============ GITHUB / ACTIVITY ============ -->
+  <section class="activity" id="activity">
+    <div class="section-head">
+      <h2>Activity</h2>
+      <p class="section-lede">Connect a GitHub username to show real contribution data here.</p>
+    </div>
+    <div class="activity-panel">
+      <div class="activity-heatmap" id="activityHeatmap" aria-label="GitHub contribution graph placeholder"></div>
+      <div class="activity-caption">
+        <a href="https://github.com/rohancreates" target="_blank" rel="noopener">github.com/rohancreates</a>
+        <span>Building → Learning → Shipping</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section class="contact" id="contact">
+    <div class="contact-inner">
+      <h2>Let's build something.</h2>
+      <p>Whether it's a project, a collaboration, a hackathon idea, or just a conversation about technology — I'd like to hear it.</p>
+      <div class="contact-links">
+        <a href="mailto:rohankumarcreates@gmail.com" class="contact-link">
+          <span class="contact-link-label">Email</span>
+          <span class="contact-link-value">rohankumarcreates@gmail.com</span>
+        </a>
+        <a href="https://github.com/rohancreates" target="_blank" rel="noopener" class="contact-link">
+          <span class="contact-link-label">GitHub</span>
+          <span class="contact-link-value">github.com/rohancreates</span>
+        </a>
+        <a href="https://www.linkedin.com/in/rohankumarcreates/" target="_blank" rel="noopener" class="contact-link">
+          <span class="contact-link-label">LinkedIn</span>
+          <span class="contact-link-value">linkedin.com/in/rohankumarcreates</span>
+        </a>
+        <a href="https://leetcode.com/u/rohancreates/" target="_blank" rel="noopener" class="contact-link">
+          <span class="contact-link-label">LeetCode</span>
+          <span class="contact-link-value">leetcode.com/u/rohancreates</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Rohan / CSE Student / Builder</span>
+    <span id="footerClock">IST —</span>
+    <span>© 2026 Rohan · Built with HTML, CSS &amp; JavaScript</span>
+  </div>
+</footer>
+
+<!-- ============ PROJECT MODAL ============ -->
+<div class="modal-overlay" id="modalOverlay" hidden>
+  <div class="modal" id="projectModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="modal-close" id="modalClose" aria-label="Close project details">✕</button>
+    <div class="modal-content" id="modalContent"></div>
+  </div>
+</div>
+
+<!-- ============ COMMAND PALETTE ============ -->
+<div class="cmdk-overlay" id="cmdkOverlay" hidden>
+  <div class="cmdk" id="cmdk" role="dialog" aria-modal="true" aria-label="Command menu">
+    <input type="text" class="cmdk-input" id="cmdkInput" placeholder="Type a command…" autocomplete="off" aria-label="Command menu input">
+    <ul class="cmdk-list" id="cmdkList" role="listbox"></ul>
+  </div>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>
