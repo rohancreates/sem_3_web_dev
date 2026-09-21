@@ -10,6 +10,7 @@ const roleScreen = document.getElementById('roleScreen');
 const clueScreen = document.getElementById('clueScreen');
 const votingScreen = document.getElementById('votingScreen');
 const voteResultScreen = document.getElementById('voteResultScreen');
+const ejectionScreen = document.getElementById('ejectionScreen');
 
 // Buttons
 const showCreateBtn = document.getElementById('showCreateBtn');
@@ -84,6 +85,7 @@ function showScreen(screen) {
     clueScreen.classList.add('hidden');
     votingScreen.classList.add('hidden');
     voteResultScreen.classList.add('hidden');
+    ejectionScreen.classList.add('hidden');
     screen.classList.remove('hidden');
 }
 
@@ -453,6 +455,7 @@ socket.on('votingComplete', ({ tallies, votes, isTie, votedPlayer, votedOutWasIm
         if (isHost) {
             hostTieControls.classList.remove('hidden');
         }
+        showScreen(voteResultScreen);
     } else {
         if (votedOutWasImpostor) {
             voteConclusion.innerHTML = `${votedPlayer} received the most votes.<br><span style="color:green;">They WERE the Impostor!</span>`;
@@ -462,9 +465,54 @@ socket.on('votingComplete', ({ tallies, votes, isTie, votedPlayer, votedOutWasIm
         if (isHost) {
             hostPostGameControls.classList.remove('hidden');
         }
-    }
 
-    showScreen(voteResultScreen);
+        // ANIMATION SEQUENCE
+        const ejectedPlayerName = document.getElementById('ejectedPlayerName');
+        const ejectedCharacter = document.getElementById('ejectedCharacter');
+        const ejectionStars = document.getElementById('ejectionStars');
+        const ejectionRoleReveal = document.getElementById('ejectionRoleReveal');
+        const ejectionRoleText = document.getElementById('ejectionRoleText');
+        const ejectionWinText = document.getElementById('ejectionWinText');
+
+        ejectedPlayerName.textContent = votedPlayer;
+        ejectedCharacter.classList.remove('animate-eject');
+        ejectionStars.classList.add('hidden');
+        ejectionRoleReveal.classList.add('hidden');
+        ejectionWinText.classList.add('hidden');
+
+        showScreen(ejectionScreen);
+
+        // Force reflow to restart animation
+        void ejectedCharacter.offsetWidth;
+        ejectedCharacter.classList.add('animate-eject');
+
+        let animationTimeout, revealTimeout, endTimeout;
+
+        const cleanupAndProceed = () => {
+            clearTimeout(animationTimeout);
+            clearTimeout(revealTimeout);
+            clearTimeout(endTimeout);
+            ejectionScreen.removeEventListener('click', cleanupAndProceed);
+            showScreen(voteResultScreen);
+        };
+
+        ejectionScreen.addEventListener('click', cleanupAndProceed);
+
+        animationTimeout = setTimeout(() => {
+            ejectionStars.classList.remove('hidden');
+            ejectionRoleReveal.classList.remove('hidden');
+
+            if (votedOutWasImpostor) {
+                ejectionRoleText.innerHTML = `${votedPlayer}<br>WAS THE IMPOSTOR!`;
+                ejectionWinText.textContent = "★ CREWMATES WIN! ★";
+                ejectionWinText.classList.remove('hidden');
+            } else {
+                ejectionRoleText.innerHTML = `${votedPlayer}<br>WAS NOT THE IMPOSTOR.<br><br>THE IMPOSTOR IS STILL HERE...`;
+            }
+
+            endTimeout = setTimeout(cleanupAndProceed, 3000);
+        }, 2000);
+    }
 });
 
 socket.on('revealImpostor', ({ actualImpostor }) => {

@@ -5,11 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Impostor Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div class="container">
+    <div id="handheld-console">
+        <div id="console-top">
+            <div class="brand-text">IMPOSTOR SYSTEM</div>
+            <div class="power-light"></div>
+        </div>
+        <div id="console-screen-bezel">
+            <div class="container">
 
         <!-- Main Menu -->
         <div id="mainMenu">
@@ -187,7 +196,34 @@
                 </div>
             </div>
         </div>
+        
+        <!-- EJECTION ANIMATION SCREEN (Hidden by default) -->
+        <div id="ejectionScreen" class="hidden" style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer;">
+            <h2 style="color: var(--accent-red); margin-bottom: 20px; font-size: 24px;">VOTE RESULT</h2>
+            <div id="ejectedPlayerName" style="font-size: 28px; color: #fff; margin-bottom: 10px;"></div>
+            <div id="ejectedPlayerStatus" style="font-size: 14px; color: var(--accent-yellow); margin-bottom: 30px;">HAS BEEN VOTED OUT!</div>
+            
+            <div id="ejectionAnimationContainer" style="position: relative; height: 120px; width: 100%; max-width: 300px; overflow: hidden; border: 3px solid var(--pixel-border); background: var(--screen-text-dark); margin: 0 auto;">
+                <div id="ejectedCharacter" class="pixel-character">
+                    <div class="pixel-visor"></div>
+                    <div class="pixel-backpack"></div>
+                </div>
+                <div id="ejectionStars" class="hidden" style="position: absolute; top: 40%; left: 0; right: 0; color: #fff; font-size: 20px; letter-spacing: 15px;">★ ★ ★</div>
+            </div>
 
+            <div id="ejectionRoleReveal" class="hidden" style="margin-top: 30px; height: 60px;">
+                <div id="ejectionRoleText" style="font-size: 14px; margin-bottom: 15px;"></div>
+                <div id="ejectionWinText" style="font-size: 18px; color: var(--accent-green);" class="blink hidden"></div>
+            </div>
+        </div>
+
+    </div>
+        </div>
+        <div class="speaker-grille">
+            <div class="speaker-dot"></div><div class="speaker-dot"></div><div class="speaker-dot"></div>
+            <div class="speaker-dot"></div><div class="speaker-dot"></div><div class="speaker-dot"></div>
+            <div class="speaker-dot"></div><div class="speaker-dot"></div><div class="speaker-dot"></div>
+        </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
