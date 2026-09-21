@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impostor Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- Main Menu -->
+        <div id="mainMenu">
+            <h1>Impostor Game</h1>
+            <div class="button-group">
+                <button id="showCreateBtn">Create Game</button>
+                <button id="joinGameBtn">Join Game</button>
+            </div>
+        </div>
+
+        <!-- Create Game Screen (Hidden by default) -->
+        <div id="createScreen" class="hidden">
+            <h2>Create a Game</h2>
+            <div class="form-group">
+                <input type="text" id="hostName" placeholder="Enter your name" />
+
+                <div style="margin: 1rem 0; text-align: left;">
+                    <p style="margin-bottom: 0.5rem; font-weight: bold;">How do you want to play?</p>
+                    <label style="display: block; margin-bottom: 0.5rem;">
+                        <input type="radio" name="hostMode" id="hostIsPlayer" value="player" checked> Play as Player
+                    </label>
+                    <label style="display: block;">
+                        <input type="radio" name="hostMode" value="spectator"> Host Only / Spectator
+                    </label>
+                </div>
+
+                <button id="createRoomBtn">Create Room</button>
+                <button id="cancelCreateBtn" class="secondary-btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Join Game Screen (Hidden by default) -->
+        <div id="joinScreen" class="hidden">
+            <h2>Join a Game</h2>
+            <div class="form-group">
+                <input type="text" id="joinName" placeholder="Enter your name" />
+                <input type="text" id="joinCode" placeholder="Enter room code" maxlength="4"
+                    style="text-transform: uppercase;" />
+                <button id="joinRoomSubmitBtn">Join Room</button>
+                <button id="cancelJoinBtn" class="secondary-btn">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen (Hidden by default) -->
+        <div id="lobbyScreen" class="hidden">
+            <h2>Game Lobby</h2>
+            <p>Room Code: <strong id="displayRoomCode" class="room-code"></strong></p>
+
+            <h3 id="hostModeDisplay" style="color: #666; margin-top: -10px; margin-bottom: 20px;"></h3>
+
+            <div id="hostControls" class="hidden"
+                style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 4px;">
+                <h3>Host Controls (Secret)</h3>
+                <div class="form-group">
+                    <input type="text" id="normalWord" placeholder="Normal Word" />
+                    <input type="text" id="impostorWord" placeholder="Impostor Word" />
+                    <select id="impostorSelect"
+                        style="padding: 0.75rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem;">
+                        <option value="">Select Impostor...</option>
+                    </select>
+
+                    <div style="margin-bottom: 1rem; text-align: left;">
+                        <p style="margin-bottom: 0.5rem; font-weight: bold;">Should the impostor know they are the
+                            impostor?</p>
+                        <label style="display: block; margin-bottom: 0.5rem;">
+                            <input type="radio" name="impostorAwareness" id="impostorKnowsYes" value="yes" checked> Yes
+                            &mdash; Tell them
+                        </label>
+                        <label style="display: block; margin-bottom: 1rem;">
+                            <input type="radio" name="impostorAwareness" value="no"> No &mdash; Keep it secret
+                        </label>
+
+                        <p style="margin-bottom: 0.5rem; font-weight: bold;">Tell impostor the normal word?</p>
+                        <label style="display: block;">
+                            <input type="checkbox" id="tellImpostorNormalWord"> Yes &mdash; Tell them the normal word
+                        </label>
+                    </div>
+
+                    <button id="startGameBtn" style="background-color: #ffc107; color: #333;">Start Game</button>
+                </div>
+            </div>
+
+            <h3>Players:</h3>
+            <ul id="playerList" class="player-list"></ul>
+            <p id="waitingMessage">Waiting for players...</p>
+        </div>
+
+        <!-- Role Reveal Screen (Hidden by default) -->
+        <div id="roleScreen" class="hidden">
+            <h2>Role Reveal</h2>
+            <h3 id="roleStatus"></h3>
+            <h2 id="roleWord" style="background: #e9ecef; padding: 1rem; border-radius: 8px;"></h2>
+            <button id="continueBtn" style="margin-top: 1rem;">Continue</button>
+        </div>
+
+        <!-- Clue Phase Screen (Hidden by default) -->
+        <div id="clueScreen" class="hidden">
+            <h2>Clue Phase</h2>
+            <div id="clueSubmissionArea" class="form-group">
+                <input type="text" id="clueInput" placeholder="Enter your clue..." />
+                <button id="submitClueBtn">Submit Clue</button>
+            </div>
+            <p id="clueStatusMessage" style="font-style: italic; color: #555;"></p>
+
+            <h3>Submitted Clues: <span id="clueProgress">0 / 0</span></h3>
+            <ul id="clueList"
+                style="list-style-type: none; padding: 0; text-align: left; background: #f8f9fa; border-radius: 4px; padding: 1rem;">
+                <!-- Clues will appear here -->
+            </ul>
+
+            <h3 id="allSubmittedMessage" class="hidden" style="color: #28a745;">Everyone has submitted their clue!</h3>
+
+            <!-- Host controls for next phase -->
+            <div id="hostClueControls" class="hidden"
+                style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 4px;">
+                <h3>Host Controls</h3>
+                <div class="button-group" style="margin-top: 0;">
+                    <button id="goToVotingBtn" style="background-color: #dc3545;">Conclude Round &rarr; Voting</button>
+                    <button id="anotherClueBtn" style="background-color: #17a2b8;">Start Another Clue Round</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voting Phase Screen (Hidden by default) -->
+        <div id="votingScreen" class="hidden">
+            <h2>Voting Phase</h2>
+            <div id="votingControls" class="form-group">
+                <p>Who do you think is the Impostor?</p>
+                <select id="voteSelect"
+                    style="padding: 0.75rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 1rem;">
+                    <option value="">Select a player...</option>
+                </select>
+                <button id="submitVoteBtn">Submit Vote</button>
+            </div>
+            <p id="voteStatusMessage" style="font-style: italic; color: #555;"></p>
+
+            <h3>Live Votes: <span id="voteProgress">0 / 0</span></h3>
+            <ul id="voteList"
+                style="list-style-type: none; padding: 0; text-align: left; background: #f8f9fa; border-radius: 4px; padding: 1rem;">
+                <!-- Live votes appear here -->
+            </ul>
+        </div>
+
+        <!-- Vote Result Screen (Hidden by default) -->
+        <div id="voteResultScreen" class="hidden">
+            <h2>Voting Results</h2>
+            <div id="voteTotals" style="margin-bottom: 1rem; padding: 1rem; background: #e9ecef; border-radius: 4px;">
+            </div>
+            <h3 id="voteConclusion" style="margin-bottom: 1rem; line-height: 1.5;"></h3>
+
+            <div id="fullRevealInfo" class="hidden" style="margin-bottom: 1rem; padding: 1rem; background: #e3f2fd; border-radius: 4px; border-left: 4px solid #2196f3; text-align: left;">
+                <h3 style="margin-top: 0;">Identity Revealed!</h3>
+                <p><strong>IMPOSTOR:</strong> <span id="revealImpostorName" style="color: #d32f2f;"></span></p>
+                <p><strong>Normal Word:</strong> <span id="revealNormalWord" style="color: #1976d2;"></span></p>
+                <p><strong>Impostor Word:</strong> <span id="revealImpostorWord" style="color: #d32f2f;"></span></p>
+            </div>
+
+            <div id="hostTieControls" class="hidden"
+                style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 4px;">
+                <h3>Host Controls (Tie)</h3>
+                <div class="button-group">
+                    <button id="revoteBtn" style="background-color: #ffc107; color: #333;">Revote</button>
+                    <button id="endRoundBtn" style="background-color: #dc3545;">End Round</button>
+                </div>
+            </div>
+
+            <!-- NEW POST-GAME CONTROLS -->
+            <div id="hostPostGameControls" class="hidden" style="margin-top: 1rem; padding: 1rem; background: #d4edda; border-radius: 4px;">
+                <h3>Host Controls</h3>
+                <div class="button-group">
+                    <button id="revealImpostorBtn" style="background-color: #ff9800; margin-bottom: 0.5rem; display: block; width: 100%;">Reveal Impostor & Words</button>
+                    <button id="postGameClueBtn" style="background-color: #17a2b8;">🔄 Another Clue Round</button>
+                    <button id="postGameVoteBtn" style="background-color: #6f42c1;">🗳️ Another Voting Round</button>
+                    <button id="postGameNewBtn" style="background-color: #28a745;">🎮 New Word Game</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
