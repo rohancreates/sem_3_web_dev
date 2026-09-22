@@ -26,6 +26,7 @@ const displayRoomCode = document.getElementById('displayRoomCode');
 const joinNameInput = document.getElementById('joinName');
 const joinCodeInput = document.getElementById('joinCode');
 const playerList = document.getElementById('playerList');
+const errorBanner = document.getElementById('errorBanner');
 
 const hostControls = document.getElementById('hostControls');
 const normalWordInput = document.getElementById('normalWord');
@@ -47,6 +48,7 @@ const allSubmittedMessage = document.getElementById('allSubmittedMessage');
 const hostClueControls = document.getElementById('hostClueControls');
 const goToVotingBtn = document.getElementById('goToVotingBtn');
 const anotherClueBtn = document.getElementById('anotherClueBtn');
+const clueSubmissionArea = document.getElementById('clueSubmissionArea');
 
 // Voting
 const voteSelect = document.getElementById('voteSelect');
@@ -59,6 +61,7 @@ const voteConclusion = document.getElementById('voteConclusion');
 const hostTieControls = document.getElementById('hostTieControls');
 const revoteBtn = document.getElementById('revoteBtn');
 const endRoundBtn = document.getElementById('endRoundBtn');
+const votingControls = document.getElementById('votingControls');
 
 const hostPostGameControls = document.getElementById('hostPostGameControls');
 const postGameClueBtn = document.getElementById('postGameClueBtn');
@@ -70,124 +73,81 @@ const revealImpostorName = document.getElementById('revealImpostorName');
 const revealNormalWord = document.getElementById('revealNormalWord');
 const revealImpostorWord = document.getElementById('revealImpostorWord');
 
-let isHost = false;
+// ---------------------------------------------------------------------------
+// Client-side identity/state. The ID is issued by the server on create/join
+// and is what every socket event uses from then on -- never the display name.
+// ---------------------------------------------------------------------------
+let myPlayerId = null;
 let currentRoomCode = '';
-let myPlayerName = '';
+let isHostClient = false;
 let amISpectator = false;
 
-// Helper function to switch screens
+let latestState = null;      // last roomState payload received, always authoritative
+let previousPhase = null;    // to detect real-time phase transitions vs. late joins
+let lastSeenResultVersion = null;
+let awaitingRoleContinue = false; // true while the role-reveal screen is showing and
+                                   // hasn't been dismissed, so background roomState
+                                   // updates don't yank the screen away mid-read
+let animatingResultVersion = null; // resultVersion currently mid ejection-animation,
+                                    // so an unrelated broadcast (e.g. someone else's
+                                    // socket reconnecting) can't cut the animation short
+
 function showScreen(screen) {
-    mainMenu.classList.add('hidden');
-    createScreen.classList.add('hidden');
-    joinScreen.classList.add('hidden');
-    lobbyScreen.classList.add('hidden');
-    roleScreen.classList.add('hidden');
-    clueScreen.classList.add('hidden');
-    votingScreen.classList.add('hidden');
-    voteResultScreen.classList.add('hidden');
-    ejectionScreen.classList.add('hidden');
+    [mainMenu, createScreen, joinScreen, lobbyScreen, roleScreen, clueScreen,
+        votingScreen, voteResultScreen, ejectionScreen].forEach(s => s.classList.add('hidden'));
     screen.classList.remove('hidden');
 }
 
-// 1. Show create game screen when "Create Game" is clicked
-showCreateBtn.addEventListener('click', () => {
-    showScreen(createScreen);
-});
+function showError(message) {
+    errorBanner.textContent = message;
+    errorBanner.classList.remove('hidden');
+    clearTimeout(showError._t);
+    showError._t = setTimeout(() => errorBanner.classList.add('hidden'), 5000);
+}
 
-// Cancel creating a room
-cancelCreateBtn.addEventListener('click', () => {
-    showScreen(mainMenu);
-    hostNameInput.value = ''; // Clear input
-});
+socket.on('actionError', ({ message }) => showError(message));
+socket.on('connect_error', () => showError('Connection error. Please check your network and reload.'));
 
-// Show join game screen
-joinGameBtn.addEventListener('click', () => {
-    showScreen(joinScreen);
-});
-
-// Cancel joining a room
+// ---------------------------------------------------------------------------
+// Menu navigation
+// ---------------------------------------------------------------------------
+showCreateBtn.addEventListener('click', () => showScreen(createScreen));
+cancelCreateBtn.addEventListener('click', () => { showScreen(mainMenu); hostNameInput.value = ''; });
+joinGameBtn.addEventListener('click', () => showScreen(joinScreen));
 cancelJoinBtn.addEventListener('click', () => {
     showScreen(mainMenu);
     joinNameInput.value = '';
     joinCodeInput.value = '';
 });
 
-// Handle joining a room
-joinRoomSubmitBtn.addEventListener('click', async () => {
-    const playerName = joinNameInput.value.trim();
-    const roomCode = joinCodeInput.value.trim().toUpperCase();
-
-    if (!playerName || !roomCode) {
-        alert('Please enter your name and the room code!');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/join', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ playerName, roomCode })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            isHost = false;
-            currentRoomCode = data.roomCode;
-            myPlayerName = playerName;
-            hostControls.classList.add('hidden');
-
-            // Success! Show the lobby screen
-            displayRoomCode.textContent = data.roomCode;
-            showScreen(lobbyScreen);
-
-            // Connect to the real-time Socket.IO room
-            socket.emit('joinRoom', { roomCode: data.roomCode, playerName: myPlayerName });
-        } else {
-            alert(data.error || 'Failed to join room');
-        }
-    } catch (err) {
-        console.error(err);
-        alert('Error connecting to the server.');
-    }
-});
-
-// 2. Handle creating a room
+// ---------------------------------------------------------------------------
+// Create / join room (HTTP allocates identity, then we bind the socket to it)
+// ---------------------------------------------------------------------------
 createRoomBtn.addEventListener('click', async () => {
     const hostName = hostNameInput.value.trim();
     const hostIsPlayer = document.getElementById('hostIsPlayer').checked;
 
-    if (!hostName) {
-        alert('Please enter your name!');
-        return;
-    }
+    if (!hostName) { alert('Please enter your name!'); return; }
 
     try {
-        // Send a request to our Express server
         const response = await fetch('/api/rooms', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hostName, hostIsPlayer })
         });
-
         const data = await response.json();
 
         if (response.ok) {
-            isHost = true;
+            isHostClient = true;
             amISpectator = !hostIsPlayer;
             currentRoomCode = data.roomCode;
-            myPlayerName = hostName;
+            myPlayerId = data.playerId;
             hostControls.classList.remove('hidden');
-            // Success! Show the lobby screen with the new room code
+
             displayRoomCode.textContent = data.roomCode;
             showScreen(lobbyScreen);
 
-            // Connect to the real-time Socket.IO room
-            socket.emit('joinRoom', { roomCode: data.roomCode, playerName: myPlayerName });
+            socket.emit('joinRoom', { roomCode: data.roomCode, playerId: myPlayerId });
         } else {
             alert(data.error || 'Failed to create room');
         }
@@ -197,122 +157,186 @@ createRoomBtn.addEventListener('click', async () => {
     }
 });
 
-// Listen for player list updates from the server
-socket.on('updatePlayers', ({ players, hostName, hostIsPlayer }) => {
-    playerList.innerHTML = ''; // Clear current list
-    impostorSelect.innerHTML = '<option value="">Select Impostor...</option>'; // Clear select options
+joinRoomSubmitBtn.addEventListener('click', async () => {
+    const playerName = joinNameInput.value.trim();
+    const roomCode = joinCodeInput.value.trim().toUpperCase();
 
-    // Display host mode
-    const hostModeText = hostIsPlayer ? "Playing" : "Spectator";
-    document.getElementById('hostModeDisplay').textContent = `Host: ${hostName} — ${hostModeText}`;
+    if (!playerName || !roomCode) { alert('Please enter your name and the room code!'); return; }
 
-    players.forEach(player => {
-        // Add to list
-        const li = document.createElement('li');
-        li.textContent = player;
-        playerList.appendChild(li);
+    try {
+        const response = await fetch('/api/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerName, roomCode })
+        });
+        const data = await response.json();
 
-        // Add to host dropdown
-        const option = document.createElement('option');
-        option.value = player;
-        option.textContent = player;
-        impostorSelect.appendChild(option);
-    });
+        if (response.ok) {
+            isHostClient = false;
+            amISpectator = false;
+            currentRoomCode = data.roomCode;
+            myPlayerId = data.playerId;
+            hostControls.classList.add('hidden');
+
+            displayRoomCode.textContent = data.roomCode;
+            showScreen(lobbyScreen);
+
+            socket.emit('joinRoom', { roomCode: data.roomCode, playerId: myPlayerId });
+        } else {
+            alert(data.error || 'Failed to join room');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error connecting to the server.');
+    }
 });
 
-// Handle starting the game
+// ---------------------------------------------------------------------------
+// THE single sync point. Every real-time update -- lobby list, clue
+// submissions, votes, results -- arrives here as one authoritative snapshot.
+// ---------------------------------------------------------------------------
+socket.on('roomState', (state) => {
+    latestState = state;
+    renderState(state);
+    previousPhase = state.phase;
+});
+
+function renderState(state) {
+    renderLobby(state);
+
+    if (state.phase === 'lobby') {
+        // A real transition INTO lobby (e.g. "New Word Game") should clear the
+        // host's previous word-setup inputs. A same-phase re-render (another
+        // player joining) must not wipe out what the host is mid-typing.
+        if (previousPhase !== null && previousPhase !== 'lobby' && isHostClient) {
+            normalWordInput.value = '';
+            impostorWordInput.value = '';
+        }
+        if (!awaitingRoleContinue) showScreen(lobbyScreen);
+        return;
+    }
+
+    if (state.phase === 'clues') {
+        renderClues(state);
+        // Only jump to the clue screen automatically if we're not mid role-reveal
+        // (a fresh "startGame" sends a private roleReveal first; the player
+        // dismisses it with Continue, which is what actually shows this screen).
+        if (!awaitingRoleContinue) showScreen(clueScreen);
+        return;
+    }
+
+    if (state.phase === 'voting') {
+        renderVotingStarted(state);
+        showScreen(votingScreen);
+        return;
+    }
+
+    if (state.phase === 'result') {
+        if (animatingResultVersion !== null && animatingResultVersion === state.resultVersion) {
+            return; // don't let an unrelated broadcast interrupt the animation in progress
+        }
+
+        const isFreshResult = state.lastResult && state.resultVersion !== lastSeenResultVersion;
+        lastSeenResultVersion = state.resultVersion;
+
+        if (isFreshResult && !state.lastResult.isTie && previousPhase === 'voting') {
+            animatingResultVersion = state.resultVersion;
+            playEjectionAnimation(state);
+        } else {
+            renderResult(state);
+            showScreen(voteResultScreen);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Lobby
+// ---------------------------------------------------------------------------
+function renderLobby(state) {
+    playerList.innerHTML = '';
+    impostorSelect.innerHTML = '<option value="">Select Impostor...</option>';
+
+    const hostModeText = state.host.isPlayer ? 'Playing' : 'Spectator';
+    document.getElementById('hostModeDisplay').textContent = `Host: ${state.host.name} — ${hostModeText}`;
+
+    state.players.forEach(player => {
+        const li = document.createElement('li');
+        li.textContent = player.connected ? player.name : `${player.name} (disconnected)`;
+        playerList.appendChild(li);
+
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = player.name;
+        impostorSelect.appendChild(option);
+    });
+
+    waitingMessage.classList.toggle('hidden', state.players.length > 0);
+}
+
 startGameBtn.addEventListener('click', () => {
     const normalWord = normalWordInput.value.trim();
     const impostorWord = impostorWordInput.value.trim();
-    const impostor = impostorSelect.value;
+    const impostorId = impostorSelect.value;
     const impostorKnowsRole = document.getElementById('impostorKnowsYes').checked;
     const tellImpostorNormalWord = document.getElementById('tellImpostorNormalWord').checked;
 
-    if (!normalWord || !impostorWord || !impostor) {
+    if (!normalWord || !impostorWord || !impostorId) {
         alert('Please fill out all host settings.');
         return;
     }
 
-    // Send secret setup to the server
     socket.emit('startGame', {
         roomCode: currentRoomCode,
         normalWord,
         impostorWord,
-        impostor,
+        impostorId,
         impostorKnowsRole,
         tellImpostorNormalWord
     });
 });
 
+// ---------------------------------------------------------------------------
+// Role reveal (private, transient -- not part of roomState)
+// ---------------------------------------------------------------------------
 socket.on('roleReveal', (data) => {
+    awaitingRoleContinue = true;
     showScreen(roleScreen);
 
     if (data.isSpectator) {
-        roleStatus.textContent = "You are Spectating";
-        roleStatus.style.color = "gray";
-        roleWord.textContent = "Players are viewing their roles...";
+        roleStatus.textContent = 'You are Spectating';
+        roleStatus.style.color = 'gray';
+        roleWord.textContent = 'Players are viewing their roles...';
     } else if (data.impostorKnowsRole === false) {
-        roleStatus.textContent = "";
+        roleStatus.textContent = '';
         roleWord.textContent = `Your word: ${data.word}`;
     } else if (data.isImpostor) {
-        roleStatus.textContent = "You are the Impostor";
-        roleStatus.style.color = "red";
+        roleStatus.textContent = 'You are the Impostor';
+        roleStatus.style.color = 'red';
         if (data.normalWord) {
             roleWord.innerHTML = `Your Impostor word: <strong>${data.word}</strong><br>Normal players' word: <strong>${data.normalWord}</strong>`;
         } else {
             roleWord.textContent = `Your word: ${data.word}`;
         }
     } else {
-        roleStatus.textContent = "You are a Normal Player";
-        roleStatus.style.color = "blue";
+        roleStatus.textContent = 'You are a Normal Player';
+        roleStatus.style.color = 'blue';
         roleWord.textContent = `Your word: ${data.word}`;
     }
 });
 
 continueBtn.addEventListener('click', () => {
-    // Reset clue screen UI before showing
+    awaitingRoleContinue = false;
     clueInput.value = '';
-    
-    if (amISpectator) {
-        document.getElementById('clueSubmissionArea').classList.add('hidden');
-        clueStatusMessage.textContent = 'You are spectating the game. You cannot submit clues.';
-    } else {
-        document.getElementById('clueSubmissionArea').classList.remove('hidden');
-        clueInput.disabled = false;
-        submitClueBtn.disabled = false;
-        clueStatusMessage.textContent = '';
-    }
-    
-    allSubmittedMessage.classList.add('hidden');
-    hostClueControls.classList.add('hidden');
-
-    // Request current clues in case others submitted while we were on the role reveal screen
-    socket.emit('requestCurrentClues', { roomCode: currentRoomCode });
-
+    if (latestState) renderClues(latestState);
     showScreen(clueScreen);
 });
 
-// Submit a clue
-submitClueBtn.addEventListener('click', () => {
-    const clueText = clueInput.value.trim();
-    if (!clueText) return;
-
-    socket.emit('submitClue', {
-        roomCode: currentRoomCode,
-        playerName: myPlayerName,
-        clueText
-    });
-
-    clueInput.disabled = true;
-    submitClueBtn.disabled = true;
-    clueStatusMessage.textContent = 'You submitted your clue.';
-});
-
-// Receive updated clue list
-socket.on('cluesUpdated', ({ clueRounds, currentRound, totalPlayers }) => {
-    clueList.innerHTML = ''; // Clear and rebuild from server truth
-    
-    clueRounds.forEach((roundClues, index) => {
+// ---------------------------------------------------------------------------
+// Clue phase
+// ---------------------------------------------------------------------------
+function renderClues(state) {
+    clueList.innerHTML = '';
+    state.clueRounds.forEach((roundClues, index) => {
         const header = document.createElement('h4');
         header.textContent = `ROUND ${index + 1}`;
         header.style.marginTop = index === 0 ? '0' : '1.5rem';
@@ -323,49 +347,44 @@ socket.on('cluesUpdated', ({ clueRounds, currentRound, totalPlayers }) => {
         roundClues.forEach(clue => {
             const li = document.createElement('li');
             li.style.marginBottom = '0.5rem';
-            li.innerHTML = `<strong>${clue.playerName}:</strong> ${clue.clueText}`;
+            li.innerHTML = `<strong>${clue.name}:</strong> ${clue.clueText}`;
             clueList.appendChild(li);
         });
     });
-    
-    const currentRoundClues = clueRounds[currentRound] || [];
-    clueProgress.textContent = `${currentRoundClues.length} / ${totalPlayers}`;
-    
-    // Make sure our input is disabled if we already submitted
-    const iHaveSubmitted = currentRoundClues.some(c => c.playerName === myPlayerName);
+
+    const currentRoundClues = state.clueRounds[state.currentClueRound] || [];
+    clueProgress.textContent = `${currentRoundClues.length} / ${state.totalParticipants}`;
+
+    const iHaveSubmitted = currentRoundClues.some(c => c.playerId === myPlayerId);
     if (iHaveSubmitted) {
-        document.getElementById('clueSubmissionArea').classList.add('hidden');
+        clueSubmissionArea.classList.add('hidden');
         clueStatusMessage.textContent = 'You submitted your clue.';
+    } else if (amISpectator) {
+        clueSubmissionArea.classList.add('hidden');
+        clueStatusMessage.textContent = 'You are spectating the game. You cannot submit clues.';
     } else {
-        if (amISpectator) {
-            document.getElementById('clueSubmissionArea').classList.add('hidden');
-            clueStatusMessage.textContent = 'You are spectating the game. You cannot submit clues.';
-        } else {
-            document.getElementById('clueSubmissionArea').classList.remove('hidden');
-            clueInput.disabled = false;
-            submitClueBtn.disabled = false;
-            clueStatusMessage.textContent = '';
-        }
+        clueSubmissionArea.classList.remove('hidden');
+        clueInput.disabled = false;
+        submitClueBtn.disabled = false;
+        clueStatusMessage.textContent = '';
     }
 
-    // Rely on the server's authoritative state to handle completion
-    if (totalPlayers > 0 && currentRoundClues.length === totalPlayers) {
-        allSubmittedMessage.classList.remove('hidden');
-        if (isHost) {
-            hostClueControls.classList.remove('hidden');
-        }
-    }
+    const allSubmitted = state.totalParticipants > 0 && currentRoundClues.length === state.totalParticipants;
+    allSubmittedMessage.classList.toggle('hidden', !allSubmitted);
+    hostClueControls.classList.toggle('hidden', !(allSubmitted && isHostClient));
+}
+
+submitClueBtn.addEventListener('click', () => {
+    const clueText = clueInput.value.trim();
+    if (!clueText) return;
+
+    socket.emit('submitClue', { roomCode: currentRoomCode, clueText });
+    clueInput.value = '';
+    clueInput.disabled = true;
+    submitClueBtn.disabled = true;
+    clueStatusMessage.textContent = 'You submitted your clue.';
 });
 
-// Everyone has submitted
-socket.on('allCluesSubmitted', () => {
-    allSubmittedMessage.classList.remove('hidden');
-    if (isHost) {
-        hostClueControls.classList.remove('hidden');
-    }
-});
-
-// Host goes to voting phase
 goToVotingBtn.addEventListener('click', () => {
     socket.emit('startVoting', { roomCode: currentRoomCode });
 });
@@ -374,210 +393,159 @@ anotherClueBtn.addEventListener('click', () => {
     socket.emit('startAnotherClueRound', { roomCode: currentRoomCode });
 });
 
-// ------------- VOTING PHASE ------------- //
-
-socket.on('votingStarted', ({ players }) => {
+// ---------------------------------------------------------------------------
+// Voting phase
+// ---------------------------------------------------------------------------
+function renderVotingStarted(state) {
     voteSelect.innerHTML = '<option value="">Select a player...</option>';
-    players.forEach(p => {
-        if (p !== myPlayerName) {
+    state.players.forEach(p => {
+        if (p.id !== myPlayerId) {
             const opt = document.createElement('option');
-            opt.value = p;
-            opt.textContent = p;
+            opt.value = p.id;
+            opt.textContent = p.name;
             voteSelect.appendChild(opt);
         }
     });
 
     voteList.innerHTML = '';
-    voteProgress.textContent = `0 / ${players.length}`;
-    voteStatusMessage.textContent = '';
-
-    hostPostGameControls.classList.add('hidden');
-    fullRevealInfo.classList.add('hidden');
-    
-    if (amISpectator) {
-        document.getElementById('votingControls').classList.add('hidden');
-        voteStatusMessage.textContent = 'You are spectating. You cannot vote.';
-    } else {
-        document.getElementById('votingControls').classList.remove('hidden');
-        voteSelect.disabled = false;
-        submitVoteBtn.disabled = false;
-    }
-
-    showScreen(votingScreen);
-});
-
-submitVoteBtn.addEventListener('click', () => {
-    const targetName = voteSelect.value;
-    if (!targetName) return;
-
-    socket.emit('submitVote', {
-        roomCode: currentRoomCode,
-        voterName: myPlayerName,
-        targetName
-    });
-});
-
-socket.on('newVote', ({ voterName, targetName, totalVotes, totalPlayers, votes }) => {
-    voteList.innerHTML = '';
-    votes.forEach(v => {
+    state.votes.forEach(v => {
         const li = document.createElement('li');
         li.style.marginBottom = '0.5rem';
         li.textContent = `${v.voterName} → ${v.targetName}`;
         voteList.appendChild(li);
     });
-    voteProgress.textContent = `${totalVotes} / ${totalPlayers}`;
+    voteProgress.textContent = `${state.votes.length} / ${state.totalParticipants}`;
+    voteStatusMessage.textContent = '';
 
-    const iHaveVoted = votes.some(v => v.voterName === myPlayerName);
-    if (iHaveVoted) {
-        document.getElementById('votingControls').classList.add('hidden');
-        if (!amISpectator) {
-            voteStatusMessage.textContent = 'You have submitted your vote.';
-        }
+    hostPostGameControls.classList.add('hidden');
+    fullRevealInfo.classList.add('hidden');
+
+    const iHaveVoted = state.votes.some(v => v.voterId === myPlayerId);
+
+    if (amISpectator) {
+        votingControls.classList.add('hidden');
+        voteStatusMessage.textContent = 'You are spectating. You cannot vote.';
+    } else if (iHaveVoted) {
+        votingControls.classList.add('hidden');
+        voteStatusMessage.textContent = 'You have submitted your vote.';
+    } else {
+        votingControls.classList.remove('hidden');
+        voteSelect.disabled = false;
+        submitVoteBtn.disabled = false;
     }
+}
+
+submitVoteBtn.addEventListener('click', () => {
+    const targetId = voteSelect.value;
+    if (!targetId) return;
+    socket.emit('submitVote', { roomCode: currentRoomCode, targetId });
 });
 
-socket.on('votingComplete', ({ tallies, votes, isTie, votedPlayer, votedOutWasImpostor }) => {
+// ---------------------------------------------------------------------------
+// Result phase (tie handling, post-game controls, reveal)
+// ---------------------------------------------------------------------------
+function renderResult(state) {
+    const result = state.lastResult;
+    if (!result) return;
+
     voteTotals.innerHTML = '<h4>Individual Votes</h4><ul style="list-style:none;padding:0;">';
-    votes.forEach(v => {
+    state.votes.forEach(v => {
         voteTotals.innerHTML += `<li style="margin-bottom:0.25rem;">${v.voterName} → ${v.targetName}</li>`;
     });
     voteTotals.innerHTML += '</ul><h4>Vote Count</h4><ul style="list-style:none;padding:0;">';
-    for (let p in tallies) {
-        voteTotals.innerHTML += `<li style="margin-bottom:0.25rem;">${p} &mdash; <strong>${tallies[p]}</strong></li>`;
+    for (const name in result.tallies) {
+        voteTotals.innerHTML += `<li style="margin-bottom:0.25rem;">${name} &mdash; <strong>${result.tallies[name]}</strong></li>`;
     }
     voteTotals.innerHTML += '</ul>';
 
     hostTieControls.classList.add('hidden');
+    hostPostGameControls.classList.add('hidden');
 
-    if (isTie) {
+    if (result.isTie && !result.resolved) {
         voteConclusion.textContent = "It's a tie.";
-        voteConclusion.style.color = "orange";
-        if (isHost) {
-            hostTieControls.classList.remove('hidden');
-        }
-        showScreen(voteResultScreen);
+        voteConclusion.style.color = 'orange';
+        if (isHostClient) hostTieControls.classList.remove('hidden');
+    } else if (result.isTie && result.resolved) {
+        voteConclusion.innerHTML = `The round has ended.<br><span style="color:blue;">The Impostor was ${result.actualImpostorName}.</span>`;
+        if (isHostClient) hostPostGameControls.classList.remove('hidden');
     } else {
-        if (votedOutWasImpostor) {
-            voteConclusion.innerHTML = `${votedPlayer} received the most votes.<br><span style="color:green;">They WERE the Impostor!</span>`;
+        if (result.votedOutWasImpostor) {
+            voteConclusion.innerHTML = `${result.votedPlayerName} received the most votes.<br><span style="color:green;">They WERE the Impostor!</span>`;
         } else {
-            voteConclusion.innerHTML = `${votedPlayer} received the most votes.<br><span style="color:red;">They were NOT the Impostor.</span>`;
+            voteConclusion.innerHTML = `${result.votedPlayerName} received the most votes.<br><span style="color:red;">They were NOT the Impostor.</span>`;
         }
-        if (isHost) {
-            hostPostGameControls.classList.remove('hidden');
+        if (isHostClient) hostPostGameControls.classList.remove('hidden');
+    }
+
+    if (state.reveal) {
+        revealImpostorName.textContent = state.reveal.impostorName;
+        revealNormalWord.textContent = state.reveal.normalWord;
+        revealImpostorWord.textContent = state.reveal.impostorWord;
+        fullRevealInfo.classList.remove('hidden');
+    } else {
+        fullRevealInfo.classList.add('hidden');
+    }
+}
+
+revoteBtn.addEventListener('click', () => socket.emit('revote', { roomCode: currentRoomCode }));
+endRoundBtn.addEventListener('click', () => socket.emit('endRoundTie', { roomCode: currentRoomCode }));
+revealImpostorBtn.addEventListener('click', () => socket.emit('revealImpostorAndWords', { roomCode: currentRoomCode }));
+postGameClueBtn.addEventListener('click', () => socket.emit('startAnotherClueRound', { roomCode: currentRoomCode }));
+postGameVoteBtn.addEventListener('click', () => socket.emit('startAnotherVotingRound', { roomCode: currentRoomCode }));
+postGameNewBtn.addEventListener('click', () => socket.emit('startNewWordGame', { roomCode: currentRoomCode }));
+
+// ---------------------------------------------------------------------------
+// Ejection animation -- purely a client-side presentation layer over the
+// authoritative result. It always ends by rendering the same result screen
+// renderResult()/renderState() would have shown anyway.
+// ---------------------------------------------------------------------------
+function playEjectionAnimation(state) {
+    const result = state.lastResult;
+    const ejectedPlayerName = document.getElementById('ejectedPlayerName');
+    const ejectedCharacter = document.getElementById('ejectedCharacter');
+    const ejectionStars = document.getElementById('ejectionStars');
+    const ejectionRoleReveal = document.getElementById('ejectionRoleReveal');
+    const ejectionRoleText = document.getElementById('ejectionRoleText');
+    const ejectionWinText = document.getElementById('ejectionWinText');
+
+    ejectedPlayerName.textContent = result.votedPlayerName;
+    ejectedCharacter.classList.remove('animate-eject');
+    ejectionStars.classList.add('hidden');
+    ejectionRoleReveal.classList.add('hidden');
+    ejectionWinText.classList.add('hidden');
+
+    showScreen(ejectionScreen);
+
+    void ejectedCharacter.offsetWidth; // force reflow to restart animation
+    ejectedCharacter.classList.add('animate-eject');
+
+    let revealTimeout, endTimeout;
+
+    const finish = () => {
+        clearTimeout(revealTimeout);
+        clearTimeout(endTimeout);
+        ejectionScreen.removeEventListener('click', finish);
+        animatingResultVersion = null;
+        // Re-render from whatever the latest state is (it may have moved on,
+        // e.g. the host already revealed the impostor while we were animating).
+        renderResult(latestState || state);
+        showScreen(voteResultScreen);
+    };
+
+    ejectionScreen.addEventListener('click', finish);
+
+    revealTimeout = setTimeout(() => {
+        ejectionStars.classList.remove('hidden');
+        ejectionRoleReveal.classList.remove('hidden');
+
+        if (result.votedOutWasImpostor) {
+            ejectionRoleText.innerHTML = `${result.votedPlayerName}<br>WAS THE IMPOSTOR!`;
+            ejectionWinText.textContent = '★ CREWMATES WIN! ★';
+            ejectionWinText.classList.remove('hidden');
+        } else {
+            ejectionRoleText.innerHTML = `${result.votedPlayerName}<br>WAS NOT THE IMPOSTOR.<br><br>THE IMPOSTOR IS STILL HERE...`;
         }
 
-        // ANIMATION SEQUENCE
-        const ejectedPlayerName = document.getElementById('ejectedPlayerName');
-        const ejectedCharacter = document.getElementById('ejectedCharacter');
-        const ejectionStars = document.getElementById('ejectionStars');
-        const ejectionRoleReveal = document.getElementById('ejectionRoleReveal');
-        const ejectionRoleText = document.getElementById('ejectionRoleText');
-        const ejectionWinText = document.getElementById('ejectionWinText');
-
-        ejectedPlayerName.textContent = votedPlayer;
-        ejectedCharacter.classList.remove('animate-eject');
-        ejectionStars.classList.add('hidden');
-        ejectionRoleReveal.classList.add('hidden');
-        ejectionWinText.classList.add('hidden');
-
-        showScreen(ejectionScreen);
-
-        // Force reflow to restart animation
-        void ejectedCharacter.offsetWidth;
-        ejectedCharacter.classList.add('animate-eject');
-
-        let animationTimeout, revealTimeout, endTimeout;
-
-        const cleanupAndProceed = () => {
-            clearTimeout(animationTimeout);
-            clearTimeout(revealTimeout);
-            clearTimeout(endTimeout);
-            ejectionScreen.removeEventListener('click', cleanupAndProceed);
-            showScreen(voteResultScreen);
-        };
-
-        ejectionScreen.addEventListener('click', cleanupAndProceed);
-
-        animationTimeout = setTimeout(() => {
-            ejectionStars.classList.remove('hidden');
-            ejectionRoleReveal.classList.remove('hidden');
-
-            if (votedOutWasImpostor) {
-                ejectionRoleText.innerHTML = `${votedPlayer}<br>WAS THE IMPOSTOR!`;
-                ejectionWinText.textContent = "★ CREWMATES WIN! ★";
-                ejectionWinText.classList.remove('hidden');
-            } else {
-                ejectionRoleText.innerHTML = `${votedPlayer}<br>WAS NOT THE IMPOSTOR.<br><br>THE IMPOSTOR IS STILL HERE...`;
-            }
-
-            endTimeout = setTimeout(cleanupAndProceed, 3000);
-        }, 2000);
-    }
-});
-
-socket.on('revealImpostor', ({ actualImpostor }) => {
-    voteConclusion.innerHTML = `The round has ended.<br><span style="color:blue;">The Impostor was ${actualImpostor}.</span>`;
-    hostTieControls.classList.add('hidden');
-    if (isHost) {
-        hostPostGameControls.classList.remove('hidden');
-    }
-});
-
-revoteBtn.addEventListener('click', () => {
-    socket.emit('revote', { roomCode: currentRoomCode });
-});
-
-endRoundBtn.addEventListener('click', () => {
-    socket.emit('endRoundTie', { roomCode: currentRoomCode });
-});
-
-// ------------- POST-GAME PHASE ------------- //
-
-revealImpostorBtn.addEventListener('click', () => {
-    socket.emit('revealImpostorAndWords', { roomCode: currentRoomCode });
-});
-
-socket.on('impostorRevealed', (data) => {
-    revealImpostorName.textContent = data.impostor;
-    revealNormalWord.textContent = data.normalWord;
-    revealImpostorWord.textContent = data.impostorWord;
-    fullRevealInfo.classList.remove('hidden');
-});
-
-postGameClueBtn.addEventListener('click', () => {
-    socket.emit('startAnotherClueRound', { roomCode: currentRoomCode });
-});
-
-postGameVoteBtn.addEventListener('click', () => {
-    socket.emit('startAnotherVotingRound', { roomCode: currentRoomCode });
-});
-
-postGameNewBtn.addEventListener('click', () => {
-    socket.emit('startNewWordGame', { roomCode: currentRoomCode });
-});
-
-socket.on('cluePhaseStarted', () => {
-    hostPostGameControls.classList.add('hidden');
-    hostTieControls.classList.add('hidden');
-    
-    clueInput.value = '';
-    allSubmittedMessage.classList.add('hidden');
-    hostClueControls.classList.add('hidden');
-    
-    socket.emit('requestCurrentClues', { roomCode: currentRoomCode });
-    
-    showScreen(clueScreen);
-});
-
-socket.on('newWordGameStarted', () => {
-    hostPostGameControls.classList.add('hidden');
-    hostTieControls.classList.add('hidden');
-    
-    if (isHost) {
-        normalWordInput.value = '';
-        impostorWordInput.value = '';
-        impostorSelect.value = '';
-    }
-    
-    showScreen(lobbyScreen);
-});
+        endTimeout = setTimeout(finish, 3000);
+    }, 2000);
+}
