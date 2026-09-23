@@ -25,6 +25,7 @@ const hostNameInput = document.getElementById('hostName');
 const displayRoomCode = document.getElementById('displayRoomCode');
 const joinNameInput = document.getElementById('joinName');
 const joinCodeInput = document.getElementById('joinCode');
+const joinStatusMessage = document.getElementById('joinStatusMessage');
 const playerList = document.getElementById('playerList');
 const errorBanner = document.getElementById('errorBanner');
 
@@ -32,6 +33,9 @@ const hostControls = document.getElementById('hostControls');
 const normalWordInput = document.getElementById('normalWord');
 const impostorWordInput = document.getElementById('impostorWord');
 const impostorSelect = document.getElementById('impostorSelect');
+const impostorModeSpecific = document.getElementById('impostorModeSpecific');
+const impostorModeRandom = document.getElementById('impostorModeRandom');
+const specificImpostorContainer = document.getElementById('specificImpostorContainer');
 const startGameBtn = document.getElementById('startGameBtn');
 const waitingMessage = document.getElementById('waitingMessage');
 
@@ -92,6 +96,15 @@ let animatingResultVersion = null; // resultVersion currently mid ejection-anima
                                     // so an unrelated broadcast (e.g. someone else's
                                     // socket reconnecting) can't cut the animation short
 
+let joinRequestId = null; // identifies THIS join attempt to the server so repeated
+                           // clicks (or a slow-network retry) before the first
+                           // response returns resolve to the same player, not new ones
+
+function generateClientId() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return 'c-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+}
+
 function showScreen(screen) {
     [mainMenu, createScreen, joinScreen, lobbyScreen, roleScreen, clueScreen,
         votingScreen, voteResultScreen, ejectionScreen].forEach(s => s.classList.add('hidden'));
@@ -113,11 +126,17 @@ socket.on('connect_error', () => showError('Connection error. Please check your 
 // ---------------------------------------------------------------------------
 showCreateBtn.addEventListener('click', () => showScreen(createScreen));
 cancelCreateBtn.addEventListener('click', () => { showScreen(mainMenu); hostNameInput.value = ''; });
-joinGameBtn.addEventListener('click', () => showScreen(joinScreen));
+joinGameBtn.addEventListener('click', () => {
+    joinRequestId = null; // fresh attempt each time the screen is opened
+    joinStatusMessage.textContent = '';
+    showScreen(joinScreen);
+});
 cancelJoinBtn.addEventListener('click', () => {
     showScreen(mainMenu);
     joinNameInput.value = '';
     joinCodeInput.value = '';
+    joinStatusMessage.textContent = '';
+    joinRequestId = null;
 });
 
 // ---------------------------------------------------------------------------
@@ -158,16 +177,26 @@ createRoomBtn.addEventListener('click', async () => {
 });
 
 joinRoomSubmitBtn.addEventListener('click', async () => {
+    if (joinRoomSubmitBtn.disabled) return; // belt-and-suspenders against double firing
+
     const playerName = joinNameInput.value.trim();
     const roomCode = joinCodeInput.value.trim().toUpperCase();
 
     if (!playerName || !roomCode) { alert('Please enter your name and the room code!'); return; }
 
+    // Same id for every click of THIS attempt (reset only when the join screen
+    // is (re)opened), so a slow connection + repeated clicks all resolve to
+    // one player server-side instead of creating a new one each time.
+    if (!joinRequestId) joinRequestId = generateClientId();
+
+    joinRoomSubmitBtn.disabled = true;
+    joinStatusMessage.textContent = 'Joining...';
+
     try {
         const response = await fetch('/api/join', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerName, roomCode })
+            body: JSON.stringify({ playerName, roomCode, clientJoinId: joinRequestId })
         });
         const data = await response.json();
 
@@ -179,14 +208,19 @@ joinRoomSubmitBtn.addEventListener('click', async () => {
             hostControls.classList.add('hidden');
 
             displayRoomCode.textContent = data.roomCode;
+            joinStatusMessage.textContent = '';
             showScreen(lobbyScreen);
 
             socket.emit('joinRoom', { roomCode: data.roomCode, playerId: myPlayerId });
         } else {
+            joinRoomSubmitBtn.disabled = false;
+            joinStatusMessage.textContent = '';
             alert(data.error || 'Failed to join room');
         }
     } catch (err) {
         console.error(err);
+        joinRoomSubmitBtn.disabled = false;
+        joinStatusMessage.textContent = '';
         alert('Error connecting to the server.');
     }
 });
@@ -211,6 +245,8 @@ function renderState(state) {
         if (previousPhase !== null && previousPhase !== 'lobby' && isHostClient) {
             normalWordInput.value = '';
             impostorWordInput.value = '';
+            impostorModeSpecific.checked = true;
+            updateImpostorModeUI();
         }
         if (!awaitingRoleContinue) showScreen(lobbyScreen);
         return;
@@ -273,25 +309,42 @@ function renderLobby(state) {
     waitingMessage.classList.toggle('hidden', state.players.length > 0);
 }
 
+function updateImpostorModeUI() {
+    const isRandom = impostorModeRandom.checked;
+    specificImpostorContainer.classList.toggle('hidden', isRandom);
+}
+impostorModeSpecific.addEventListener('change', updateImpostorModeUI);
+impostorModeRandom.addEventListener('change', updateImpostorModeUI);
+
 startGameBtn.addEventListener('click', () => {
     const normalWord = normalWordInput.value.trim();
     const impostorWord = impostorWordInput.value.trim();
-    const impostorId = impostorSelect.value;
     const impostorKnowsRole = document.getElementById('impostorKnowsYes').checked;
-    const tellImpostorNormalWord = document.getElementById('tellImpostorNormalWord').checked;
+    const impostorMode = impostorModeRandom.checked ? 'random' : 'specific';
 
-    if (!normalWord || !impostorWord || !impostorId) {
+    if (!normalWord || !impostorWord) {
         alert('Please fill out all host settings.');
         return;
     }
+
+    let impostorId = null;
+    if (impostorMode === 'specific') {
+        impostorId = impostorSelect.value;
+        if (!impostorId) {
+            alert('Please select an impostor, or choose Random.');
+            return;
+        }
+    }
+    // In 'random' mode no impostorId is sent at all -- the server picks and
+    // never tells this (host) browser who it picked.
 
     socket.emit('startGame', {
         roomCode: currentRoomCode,
         normalWord,
         impostorWord,
+        impostorMode,
         impostorId,
-        impostorKnowsRole,
-        tellImpostorNormalWord
+        impostorKnowsRole
     });
 });
 

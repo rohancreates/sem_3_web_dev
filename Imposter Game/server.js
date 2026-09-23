@@ -129,9 +129,7 @@ function sendPrivateRoles(room) {
       impostorKnowsRole: room.game.impostorKnowsRole,
       word,
     };
-    if (isImpostor && room.game.tellImpostorNormalWord) {
-      payload.normalWord = room.game.normalWord;
-    }
+    // The impostor never receives the normal word -- that option was removed.
     io.to(socketId).emit('roleReveal', payload);
   });
 
@@ -164,13 +162,15 @@ app.post('/api/rooms', (req, res) => {
     host: { id: hostId, name: hostName.trim(), isPlayer },
     players: isPlayer ? [{ id: hostId, name: hostName.trim() }] : [],
     connections: {}, // playerId -> socket.id
+    joinTokens: {}, // clientJoinId -> playerId, so a repeated /api/join from the
+                     // same browser tab (double-click, slow-network retry) never
+                     // creates a second player -- see /api/join below.
     phase: 'lobby',
     game: {
       normalWord: null,
       impostorWord: null,
       impostorId: null,
       impostorKnowsRole: true,
-      tellImpostorNormalWord: false,
     },
     clueRounds: [[]],
     currentClueRound: 0,
@@ -187,10 +187,13 @@ app.post('/api/rooms', (req, res) => {
 });
 
 app.post('/api/join', (req, res) => {
-  let { playerName, roomCode } = req.body;
+  let { playerName, roomCode, clientJoinId } = req.body;
 
   if (!playerName || !playerName.trim() || !roomCode) {
     return res.status(400).json({ error: 'Player name and room code are required' });
+  }
+  if (!clientJoinId || typeof clientJoinId !== 'string') {
+    return res.status(400).json({ error: 'Missing client join identifier.' });
   }
 
   playerName = playerName.trim();
@@ -201,12 +204,27 @@ app.post('/api/join', (req, res) => {
     return res.status(404).json({ error: 'Room not found. Please check the code.' });
   }
 
+  // Idempotency: the SAME browser tab retrying (double-click, slow network,
+  // an accidental duplicate submit) must resolve to the player already
+  // created for it, never create a second one. This lookup-then-create is
+  // fully synchronous (no `await` in between), so it is race-free even if
+  // several requests from the same tab arrive back-to-back -- Node handles
+  // them one at a time, there is no window where two requests interleave.
+  const existingPlayerId = room.joinTokens[clientJoinId];
+  if (existingPlayerId) {
+    const existingPlayer = room.players.find((p) => p.id === existingPlayerId);
+    if (existingPlayer) {
+      return res.json({ roomCode, playerId: existingPlayer.id, isHost: false, isPlayer: true });
+    }
+  }
+
   if (room.phase !== 'lobby') {
     return res.status(409).json({ error: 'This game has already started. Ask the host for a new room.' });
   }
 
   const playerId = generateId();
   room.players.push({ id: playerId, name: playerName });
+  room.joinTokens[clientJoinId] = playerId;
 
   res.json({ roomCode, playerId, isHost: false, isPlayer: true });
 });
@@ -234,28 +252,40 @@ io.on('connection', (socket) => {
   });
 
   // Host starts the game: lobby -> clues
-  socket.on('startGame', ({ roomCode, normalWord, impostorWord, impostorId, impostorKnowsRole, tellImpostorNormalWord }) => {
+  socket.on('startGame', ({ roomCode, normalWord, impostorWord, impostorMode, impostorId, impostorKnowsRole }) => {
     const room = rooms[roomCode];
     if (!room) return sendError(socket, 'Room not found.');
     if (!socketIsHost(room, socket)) return sendError(socket, 'Only the host can start the game.');
     if (!canTransition(room.phase, 'clues')) return sendError(socket, `Cannot start game from phase "${room.phase}".`);
 
-    if (!normalWord || !impostorWord || !impostorId) {
-      return sendError(socket, 'Normal word, impostor word, and impostor selection are required.');
-    }
-    if (!isParticipant(room, impostorId)) {
-      return sendError(socket, 'Selected impostor is not a participating player.');
+    if (!normalWord || !impostorWord) {
+      return sendError(socket, 'Normal word and impostor word are required.');
     }
     if (room.players.length < 2) {
       return sendError(socket, 'Need at least 2 players to start.');
     }
 
+    const mode = impostorMode === 'random' ? 'random' : 'specific';
+    let resolvedImpostorId;
+
+    if (mode === 'random') {
+      // Chosen HERE, on the server, from participating players only
+      // (room.players -- never all sockets, and never a spectator host).
+      // Any impostorId the client sent is ignored: trusting a client-picked
+      // value would let the host see/influence the pick, defeating the point.
+      resolvedImpostorId = room.players[Math.floor(Math.random() * room.players.length)].id;
+    } else {
+      if (!impostorId || !isParticipant(room, impostorId)) {
+        return sendError(socket, 'Selected impostor is not a participating player.');
+      }
+      resolvedImpostorId = impostorId;
+    }
+
     room.game = {
       normalWord: String(normalWord),
       impostorWord: String(impostorWord),
-      impostorId,
+      impostorId: resolvedImpostorId,
       impostorKnowsRole: !!impostorKnowsRole,
-      tellImpostorNormalWord: !!tellImpostorNormalWord,
     };
     room.clueRounds = [[]];
     room.currentClueRound = 0;
@@ -265,6 +295,8 @@ io.on('connection', (socket) => {
     room.phase = 'clues';
 
     sendPrivateRoles(room);
+    // publicState() never includes room.game, so the impostor's identity
+    // (random or specific) does not leak to the host or anyone else here.
     broadcastRoomState(room);
   });
 
@@ -438,7 +470,7 @@ io.on('connection', (socket) => {
     if (!socketIsHost(room, socket)) return sendError(socket, 'Only the host can start a new word game.');
     if (!canTransition(room.phase, 'lobby')) return sendError(socket, `Cannot return to lobby from phase "${room.phase}".`);
 
-    room.game = { normalWord: null, impostorWord: null, impostorId: null, impostorKnowsRole: true, tellImpostorNormalWord: false };
+    room.game = { normalWord: null, impostorWord: null, impostorId: null, impostorKnowsRole: true };
     room.clueRounds = [[]];
     room.currentClueRound = 0;
     room.votes = [];
